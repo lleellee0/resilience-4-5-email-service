@@ -1,0 +1,32 @@
+server:
+  port: 8081
+  tomcat:
+    threads:
+      max: 3        # 최대 스레드 수를 3개로 제한합니다.
+    accept-count: 30   # 모든 스레드가 사용 중일 때 들어오는 요청을 대기시킬 큐의 크기를 30개로 제한합니다.
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:29092,localhost:29093,localhost:29094
+    # --- Consumer 설정 ---
+    consumer:
+      group-id: email-sender-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # Value Deserializer는 JsonDeserializer 사용 (기존과 동일)
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: resilience.emailservice.mail,resilience.mainservice.main.mail,*
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: resilience.emailservice.mail.EmailRequest # 역직렬화 시 사용할 기본 타입
+    # --- Producer 설정 (추가) ---
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    topic:
+      dlt:
+        suffix: .DLT # DLQ 토픽 접미사
+    listener:
+      retry:
+        attempts: 3   # 총 시도 횟수 (최초 1 + 재시도 2)
+        interval: 1000 # 재시도 간격 (ms)
